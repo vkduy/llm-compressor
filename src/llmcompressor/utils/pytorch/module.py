@@ -18,7 +18,6 @@ __all__ = [
     "expand_special_targets",
     "build_parameterized_layers",
     "qat_active",
-    "get_no_split_params",
 ]
 
 ALL_TARGET = "__ALL__"
@@ -126,26 +125,6 @@ def qat_active(module: Module) -> bool:
             return True
 
     return False
-
-
-def get_no_split_params(model: PreTrainedModel) -> Union[str, List[str]]:
-    """
-    Get list of module classes that shouldn't be split when sharding. For
-    Hugging Face Transformer models, this is the decoder layer type. For other
-    types of models, this just returns all module names.
-
-    :return: list of class names that shouldn't be split
-    """
-    try:
-        # Transformers < v5 support
-        no_split_modules = model._get_no_split_modules("auto")
-    except AttributeError:
-        # Transformers v5 support
-        no_split_modules = model._no_split_modules
-    if len(no_split_modules) <= 0:
-        return ALL_TARGET
-
-    return no_split_modules
 
 
 # https://discuss.pytorch.org/t/how-to-access-to-a-layer-by-module-name/83797/8

@@ -32,8 +32,6 @@ class SparsityModifierBase(Modifier):
     owl_lmbda: float | None = None
 
     # data pipeline arguments
-    sequential_update: bool | None = False  # deprecated
-    sequential_targets: str | list[str] | None = None
     targets: str | list[str] = ["Linear"]
     ignore: list[str] = Field(default_factory=list)
 
@@ -43,17 +41,6 @@ class SparsityModifierBase(Modifier):
     _module_names: dict[torch.nn.Module, str] = PrivateAttr(default_factory=dict)
     _target_layers: dict[str, torch.nn.Module] = PrivateAttr(default_factory=dict)
     _module_sparsities: dict[torch.nn.Module, str] = PrivateAttr(default_factory=dict)
-
-    @field_validator("sequential_update", mode="before")
-    def validate_sequential_update(cls, value: bool) -> bool:
-        if not value:
-            warnings.warn(
-                "`sequential_update=False` is no longer supported, setting "
-                "sequential_update=True",
-                DeprecationWarning,
-            )
-
-        return True
 
     @field_validator("sparsity_profile", mode="before")
     def validate_sparsity_profile(cls, value: str | None) -> bool:
@@ -111,12 +98,8 @@ class SparsityModifierBase(Modifier):
         dataloader: torch.utils.data.DataLoader = state.data.calib
 
         # infer module and sequential targets
-        # Note: only pass sequential_targets from kwargs, not the full kwargs dict
-        # which may contain 'model' and cause duplicate argument errors
-        self.sequential_targets = self._infer_sequential_targets(
-            model, sequential_targets=kwargs.get("sequential_targets")
-        )
-        layers = dict(match_named_modules(model, self.sequential_targets))
+        sequential_targets = model._get_no_split_modules("auto")
+        layers = dict(match_named_modules(model, sequential_targets))
         self._target_layers = dict(
             match_named_modules(model, self.targets)
         )  # layers containing targets
@@ -193,33 +176,6 @@ class SparsityModifierBase(Modifier):
     def on_end(self, state: State, event: Event, **kwargs):
         self.ended_ = True
         self.remove_hooks()
-
-    def _infer_sequential_targets(
-        self, model: torch.nn.Module, **kwargs
-    ) -> str | list[str]:
-        targets_from_kwargs = kwargs.get("sequential_targets")
-
-        # Validate that sequential_targets is not provided from both sources
-        if self.sequential_targets is not None and targets_from_kwargs is not None:
-            raise ValueError(
-                "sequential_targets was provided both in the modifier config and in "
-                "oneshot() dataset_args. Please provide sequential_targets in only "
-                "one location to avoid conflicts."
-            )
-
-        match self.sequential_targets:
-            case None:
-                # Check if sequential_targets was passed via kwargs (from dataset_args)
-                if targets_from_kwargs is not None:
-                    if isinstance(targets_from_kwargs, str):
-                        return [targets_from_kwargs]
-                    return targets_from_kwargs
-                # Fall back to auto-inference
-                return get_no_split_params(model)
-            case str():
-                return [self.sequential_targets]
-            case _:
-                return self.sequential_targets
 
     def _infer_owl_layer_sparsity(
         self,

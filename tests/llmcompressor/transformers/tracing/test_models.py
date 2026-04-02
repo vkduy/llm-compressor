@@ -15,7 +15,6 @@ from transformers import (
 )
 
 from llmcompressor.transformers.tracing.debug import trace
-from llmcompressor.utils.pytorch.module import get_no_split_params
 from tests.testing_utils import requires_hf_token
 
 
@@ -156,7 +155,7 @@ def test_model_trace(model_id, model_class, targets, modality, backends):
 
 def get_target_modules(model, sequential_targets):
     if sequential_targets is None:
-        sequential_targets = get_no_split_params(model)
+        sequential_targets = model._get_no_split_modules("auto")
     if isinstance(sequential_targets, str):
         sequential_targets = [sequential_targets]
 

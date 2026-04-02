@@ -65,11 +65,8 @@ class SparseGPTModifier(SparsityModifierBase):
         previously pruned model, defaults to False.
     :param offload_hessians: Set to True for decreased memory usage but increased
         runtime.
-    :param sequential_targets: list of layer names to compress
-        during SparseGPT, or '__ALL__' to compress every layer
-        in the model. Alias for `targets`
-    :param targets: list of layer names to compress during SparseGPT, or '__ALL__'
-        to compress every layer in the model. Alias for `sequential_targets`
+    :param targets: list of module names to quantize if a scheme is provided. Defaults
+        to Linear layers
     :param ignore: optional list of module class names or submodule names to not
         quantize even if they match a target. Defaults to empty list.
     """
